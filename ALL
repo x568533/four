@@ -1,0 +1,49 @@
+import (
+        "context"
+        "fmt"
+        "io"
+
+        automl "cloud.google.com/go/automl/apiv1"
+        "cloud.google.com/go/automl/apiv1/automlpb"
+        "google.golang.org/api/iterator"
+)
+
+// listModelEvaluation lists existing model evaluations.
+func listModelEvaluations(w io.Writer, projectID string, location string, modelID string) error {
+        // projectID := "my-project-id"
+        // location := "us-central1"
+        // modelID := "TRL123456789..."
+
+        ctx := context.Background()
+        client, err := automl.NewClient(ctx)
+        if err != nil {
+                return fmt.Errorf("NewClient: %w", err)
+        }
+        defer client.Close()
+
+        req := &automlpb.ListModelEvaluationsRequest{
+                Parent: fmt.Sprintf("projects/%s/locations/%s/models/%s", projectID, location, modelID),
+        }
+
+        it := client.ListModelEvaluations(ctx, req)
+
+        // Iterate over all results
+        for {
+                evaluation, err := it.Next()
+                if err == iterator.Done {
+                        break
+                }
+                if err != nil {
+                        return fmt.Errorf("ListModelEvaluations.Next: %w", err)
+                }
+
+                fmt.Fprintf(w, "Model evaluation name: %v\n", evaluation.GetName())
+                fmt.Fprintf(w, "Model annotation spec id: %v\n", evaluation.GetAnnotationSpecId())
+                fmt.Fprintf(w, "Create Time:\n")
+                fmt.Fprintf(w, "\tseconds: %v\n", evaluation.GetCreateTime().GetSeconds())
+                fmt.Fprintf(w, "\tnanos: %v\n", evaluation.GetCreateTime().GetNanos())
+                fmt.Fprintf(w, "Evaluation example count: %v\n", evaluation.GetEvaluatedExampleCount())
+                fmt.Fprintf(w, "Classification model evaluation metrics: %v\n", evaluation.GetClassificationEvaluationMetrics())
+        }
+
+        return nil
